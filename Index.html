@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聲控解謎成語大冒險 - 國小中文學習樂園</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;800&family=ZCOOL+KuaiLe&family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Noto Serif TC', serif;
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 40%, #ffedd5 100%);
+            min-height: 100vh;
+        }
+        .fun-font {
+            font-family: 'ZCOOL KuaiLe', cursive, sans-serif;
+        }
+        .num-font {
+            font-family: 'Nunito', sans-serif;
+        }
+
+        /* Ruby Zhuyin Custom Typography */
+        ruby {
+            display: inline-flex;
+            flex-direction: column-reverse;
+            vertical-align: bottom;
+            align-items: center;
+            margin: 0 4px;
+            line-height: 1.2;
+        }
+        rt {
+            font-size: 0.45em;
+            color: #d97706; /* Warm Amber */
+            font-weight: 700;
+            font-family: system-ui, -apple-system, sans-serif;
+            letter-spacing: 0px;
+            user-select: none;
+            margin-bottom: 2px;
+        }
+        .char-box {
+            font-size: 2.2rem;
+            color: #7c2d12;
+            font-weight: 800;
+        }
+
+        /* Glowing and animated missing character tile */
+        @keyframes missing-pulse {
+            0%, 100% { border-color: #f59e0b; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+            50% { border-color: #ef4444; box-shadow: 0 0 25px rgba(239, 68, 68, 0.8); }
+        }
+        .missing-tile {
+            animation: missing-pulse 1.8s infinite ease-in-out;
+            background: radial-gradient(circle, #fef3c7 0%, #fde68a 100%);
+        }
+
+        @keyframes fill-success {
+            0% { transform: scale(0.3) rotate(-15deg); opacity: 0; }
+            70% { transform: scale(1.2) rotate(5deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        .tile-revealed {
+            animation: fill-success 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+            color: white !important;
+            border-color: #34d399 !important;
+        }
+
+        /* Pulse wave animation for speech recording */
+        @keyframes ripple {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(2.2); opacity: 0; }
+        }
+        .recording-wave {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 9999px;
+            background-color: rgba(239, 68, 68, 0.4);
+            animation: ripple 1.5s infinite ease-out;
+            z-index: 0;
+        }
+
+        /* Floating particles */
+        @keyframes float-item {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(3deg); }
+        }
+        .float-anim {
+            animation: float-item 4s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="text-amber-950 pb-12 flex flex-col min-h-screen">
+
+    <header class="w-full py-4 px-4 bg-white/80 backdrop-blur-md shadow-md border-b-4 border-amber-300 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-400 flex items-center justify-center text-white text-2xl shadow-lg float-anim">
+                    <i class="fa-solid fa-microphone-lines"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold fun-font text-orange-600 tracking-wider flex items-center gap-2">
+                        聲控解謎成語大冒險
+                        <span class="text-xs font-sans bg-orange-100 text-orange-800 px-2.5 py-0.5 rounded-full border border-orange-300">中高年級篇</span>
+                    </h1>
+                    <p class="text-xs text-amber-800 font-bold">大聲唸出成語 🎤 解開隱藏字塊！</p>
+                </div>
+            </div>
+
+            <!-- Stats Bar -->
+            <div class="flex items-center gap-4 bg-amber-50 px-4 py-2 rounded-2xl border-2 border-amber-200 shadow-inner">
+                <div class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-star text-yellow-500 text-lg"></i>
+                    <span class="text-xs text-amber-700 font-bold">得分:</span>
+                    <span id="scoreDisplay" class="text-xl font-black text-orange-600 num-font">0</span>
+                </div>
+                <div class="h-6 w-0.5 bg-amber-300"></div>
+                <div class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-trophy text-amber-500 text-lg"></i>
+                    <span class="text-xs text-amber-700 font-bold">關卡:</span>
+                    <span id="levelDisplay" class="text-lg font-bold text-amber-900 num-font">1 / 10</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-3xl mx-auto px-4 mt-6 flex-1 w-full space-y-6">
+
+        <!-- Category Selector Bar -->
+        <div class="bg-white/90 backdrop-blur-sm rounded-2xl p-3 shadow-md border-2 border-amber-200 flex flex-wrap items-center justify-between gap-2">
+            <span class="text-xs font-bold text-amber-800 px-2 flex items-center gap-1">
+                <i class="fa-solid fa-shapes text-orange-500"></i> 選擇成語主題：
+            </span>
+            <div id="categoryBtns" class="flex flex-wrap gap-2">
+                <button onclick="selectCategory('all')" class="cat-btn active bg-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-orange-600 shadow-sm transition-all hover:scale-105">全部挑戰</button>
+                <button onclick="selectCategory('fable')" class="cat-btn bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold px-3 py-1.5 rounded-xl border border-amber-300 transition-all hover:scale-105">寓言故事</button>
+                <button onclick="selectCategory('wisdom')" class="cat-btn bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold px-3 py-1.5 rounded-xl border border-amber-300 transition-all hover:scale-105">智慧哲理</button>
+                <button onclick="selectCategory('virtue')" class="cat-btn bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold px-3 py-1.5 rounded-xl border border-amber-300 transition-all hover:scale-105">品格學習</button>
+            </div>
+        </div>
+
+        <!-- Main Challenge Card -->
+        <section class="bg-white/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-2xl border-4 border-amber-300 relative overflow-hidden flex flex-col items-center">
+            
+            <!-- Category & Hint Badge -->
+            <div class="w-full flex items-center justify-between mb-4">
+                <span id="idiomCategoryBadge" class="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full border border-emerald-300 flex items-center gap-1">
+                    <i class="fa-solid fa-bookmark"></i> 寓言故事成語
+                </span>
+                <button onclick="playDemoSpeech()" class="bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold px-3.5 py-1.5 rounded-xl border border-amber-300 shadow-sm transition flex items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-volume-high text-orange-500"></i> 聽示範發音
+                </button>
+            </div>
+
+            <!-- Idiom Display Container (Ruby Zhuyin Blocks) -->
+            <div class="my-6 py-6 px-4 w-full bg-gradient-to-br from-amber-50 to-orange-50/60 rounded-2xl border-2 border-amber-200 shadow-inner flex justify-center items-center gap-3 sm:gap-6 min-h-[140px]">
+                <div id="idiomDisplay" class="flex items-center justify-center gap-2 sm:gap-4 flex-wrap">
+                    <!-- Dynamic Tiles inserted by JS -->
+                </div>
+            </div>
+
+            <!-- Hint Prompt -->
+            <div class="w-full text-center mb-6">
+                <div class="inline-flex items-center gap-2 bg-orange-100/80 px-4 py-2 rounded-2xl border border-orange-200 text-orange-950 text-sm sm:text-base font-bold">
+                    <i class="fa-solid fa-lightbulb text-amber-500 animate-bounce"></i>
+                    <span>提示：</span>
+                    <span id="idiomHint" class="font-normal text-amber-900">請按下方麥克風，完整唸出成語解謎！</span>
+                </div>
+            </div>
+
+            <!-- Speech Control Button & Status -->
+            <div class="flex flex-col items-center justify-center my-2 relative">
+                <!-- Outer Pulse Wave Container -->
+                <div class="relative flex items-center justify-center">
+                    <div id="micWave" class="hidden recording-wave"></div>
+                    <button id="micBtn" onclick="toggleSpeechRecognition()" class="relative z-10 w-24 h-24 rounded-full bg-gradient-to-tr from-orange-500 to-amber-400 hover:from-orange-600 hover:to-amber-500 text-white text-3xl shadow-xl border-4 border-amber-200 flex flex-col items-center justify-center transition-all duration-300 active:scale-95 cursor-pointer">
+                        <i id="micIcon" class="fa-solid fa-microphone"></i>
+                        <span id="micSubText" class="text-[10px] font-bold mt-1 font-sans">按住說話</span>
+                    </button>
+                </div>
+
+                <!-- Recognition Real-time Speech Output Feedback -->
+                <div class="mt-4 h-10 flex items-center justify-center">
+                    <p id="speechRecognizedText" class="text-sm font-bold text-amber-800 bg-amber-100/90 px-4 py-1.5 rounded-full border border-amber-300 shadow-sm transition-all duration-200 min-w-[200px] text-center">
+                        準備好了嗎？點擊麥克風開始朗讀
+                    </p>
+                </div>
+            </div>
+
+            <!-- Manual Fallback Mode (For devices without mic or permissions) -->
+            <div class="mt-4 pt-4 border-t border-amber-200 w-full flex flex-col items-center">
+                <button onclick="toggleManualInput()" class="text-xs text-amber-700 hover:text-orange-600 underline font-bold flex items-center gap-1">
+                    <i class="fa-solid fa-keyboard"></i> 麥克風不能用？切換鍵盤打字解謎
+                </button>
+
+                <div id="manualInputBox" class="hidden mt-3 w-full max-w-sm flex items-center gap-2">
+                    <input type="text" id="manualTextInput" placeholder="輸入完整的四字成語..." class="flex-1 px-4 py-2 text-sm rounded-xl border-2 border-amber-300 focus:outline-none focus:border-orange-500 text-center font-bold">
+                    <button onclick="checkManualAnswer()" class="bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold px-4 py-2 rounded-xl shadow transition">提交</button>
+                </div>
+            </div>
+
+        </section>
+
+        <section id="dictionaryCard" class="bg-white/90 backdrop-blur-md rounded-2xl p-6 shadow-md border-2 border-amber-200 space-y-3 hidden transition-all duration-500">
+            <div class="flex items-center justify-between border-b border-amber-200 pb-2">
+                <h3 class="text-lg font-bold fun-font text-orange-700 flex items-center gap-2">
+                    <i class="fa-solid fa-book-open text-amber-500"></i> 成語小字典
+                </h3>
+                <span class="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">已成功解鎖 ✨</span>
+            </div>
+            
+            <div class="space-y-2 text-sm text-amber-950 font-sans leading-relaxed">
+                <p><strong>【成語名稱】：</strong><span id="dictTitle" class="font-bold text-orange-700 text-base"></span></p>
+                <p><strong>【注音對照】：</strong><span id="dictZhuyin" class="text-amber-800 font-semibold"></span></p>
+                <p><strong>【詳細釋義】：</strong><span id="dictMeaning" class="text-amber-900"></span></p>
+                <p><strong>【造句例句】：</strong><span id="dictExample" class="text-amber-800 italic bg-amber-50 px-2 py-1 rounded border border-amber-100 block mt-1"></span></p>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+                <button onclick="nextQuestion()" class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-md transition flex items-center gap-2">
+                    <span>下一題</span> <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="mt-auto py-4 text-center text-xs text-amber-800 font-bold">
+        <p>🎓 專為國小中高年級設計 ‧ 聲控中文語音互動學習平台</p>
+    </footer>
+
+    <script>
+        const IDIOM_DATABASE = [
+            {
+                idiom: "守株待兔",
+                zhuyin: "ㄕㄡˇ ㄓㄨ ㄉㄞˋ ㄊㄨˋ",
+                missingIndex: 3, // '兔' missing
+                category: "fable",
+                categoryName: "寓言故事",
+                hint: "比喻拘泥守舊，或企圖不勞而獲。",
+                meaning: "沿用過去的方法，守在樹幹旁等待兔子撞死。比喻死守狹隘經驗，不知變通，或企圖僥倖獲得成功。",
+                example: "我們應該積極學習新知識，而不是守株待兔，等待好運降臨。"
+            },
+            {
+                idiom: "畫蛇添足",
+                zhuyin: "ㄏㄨㄚˋ ㄕㄜˊ ㄊㄧㄢ ㄗㄨˊ",
+                missingIndex: 3, // '足' missing
+                category: "fable",
+                categoryName: "寓言故事",
+                hint: "畫蛇時給它加上腳，比喻多此一舉。",
+                meaning: "畫蛇時加上腳。比喻做多餘的事，反而把事情弄糟糕。",
+                example: "這幅畫已經很完美了，你再補上幾筆簡直是畫蛇添足。"
+            },
+            {
+                idiom: "井底之蛙",
+                zhuyin: "ㄐㄧㄥˇ ㄉㄧˇ ㄓ ㄨㄚ",
+                missingIndex: 3, // '蛙' missing
+                category: "fable",
+                categoryName: "寓言故事",
+                hint: "比喻見識狹小，眼界不大的人。",
+                meaning: "住在井底的青蛙。比喻見識狹隘、眼界短淺的人。",
+                example: "我們要多閱讀多旅遊，開闊眼界，不要做井底之蛙。"
+            },
+            {
+                idiom: "水滴石穿",
+                zhuyin: "ㄕㄨㄟˇ ㄉㄧ ㄕˊ ㄔㄨㄢ",
+                missingIndex: 3, // '穿' missing
+                category: "wisdom",
+                categoryName: "智慧哲理",
+                hint: "比喻只要有恆心，不斷努力，事情終究會成功。",
+                meaning: "水滴不斷地下落，歷久能把石頭滴穿。比喻只要堅持不懈，力量雖小也能做成艱巨的事。",
+                example: "只要每天堅持練習書法，憑著水滴石穿的精神，一定能寫出一手好字。"
+            },
+            {
+                idiom: "胸有成竹",
+                zhuyin: "ㄒㄧㄨㄥ ㄧㄡˇ ㄔㄥˊ ㄓㄨˊ",
+                missingIndex: 2, // '成' missing
+                category: "wisdom",
+                categoryName: "智慧哲理",
+                hint: "畫竹子前心裡已經有了竹子的形象，比喻做事大有把握。",
+                meaning: "畫竹子前心中已有竹子的完整形象。比喻做事之前已有通盤的考慮和充分的把握。",
+                example: "對於明天的演講比賽，他準備得很充分，早已胸有成竹。"
+            },
+            {
+                idiom: "雪中送炭",
+                zhuyin: "ㄒㄩㄝˇ ㄓㄨㄥ ㄙㄨㄥˋ ㄊㄢˋ",
+                missingIndex: 3, // '炭' missing
+                category: "virtue",
+                categoryName: "品格學習",
+                hint: "在下雪天給人送木炭，比喻在人艱難時給予適時的幫助。",
+                meaning: "在下雪嚴寒時給人送去取暖的木炭。比喻在他人急需時給予適時、物質或精神上的幫助。",
+                example: "在你最困難的時候朋友伸出援手，這種雪中送炭的情誼最為珍貴。"
+            },
+            {
+                idiom: "飲水思源",
+                zhuyin: "ㄧㄣˇ ㄕㄨㄟˇ ㄙ ㄩㄢˊ",
+                missingIndex: 3, // '源' missing
+                category: "virtue",
+                categoryName: "品格學習",
+                hint: "喝水時想到水的源頭，比喻不忘本。",
+                meaning: "喝水時想到水的來源。比喻人不忘本，懷念賜予自己恩惠的人或社會。",
+                example: "我們能有今天優良的學習環境，應當飲水思源，感謝師長的栽培。"
+            },
+            {
+                idiom: "亡羊補牢",
+                zhuyin: "ㄨㄤˊ ㄧㄤˊ ㄅㄨˇ ㄌㄠˊ",
+                missingIndex: 2, // '補' missing
+                category: "fable",
+                categoryName: "寓言故事",
+                hint: "羊丟失了再去修補羊圈，比喻事後及時補救。",
+                meaning: "丟失了羊再去修補羊圈。比喻犯錯或遭受損失後，及時採取補救措施，防止繼續受損。",
+                example: "雖然這次考試沒考好，但只要現在開始改進錯誤，亡羊補牢還算不晚。"
+            },
+            {
+                idiom: "溫故知新",
+                zhuyin: "ㄨㄣ ㄍㄨˋ ㄓ ㄒㄧㄣ",
+                missingIndex: 3, // '新' missing
+                category: "wisdom",
+                categoryName: "智慧哲理",
+                hint: "溫習舊有的知識，能獲得新的理解與體會。",
+                meaning: "溫習學過的知識，能從中有新的理解和體會。",
+                example: "每天複習課本內容，常常能有溫故知新的意外收穫。"
+            },
+            {
+                idiom: "設身處地",
+                zhuyin: "ㄕㄜˋ ㄕㄣ ㄔㄨˇ ㄉㄧˋ",
+                missingIndex: 2, // '處' missing
+                category: "virtue",
+                categoryName: "品格學習",
+                hint: "假設自己處在別人的地位或環境，替別人著想。",
+                meaning: "設想自己處於別人的處境或地位。指替別人的處境著想，互相體諒。",
+                example: "與朋友相處時，若能多設身處地替對方著想，友情就能更加持久。"
+            }
+        ];
+
+        let currentPool = [...IDIOM_DATABASE];
+        let currentIndex = 0;
+        let score = 0;
+        let isSolved = false;
+        let isListening = false;
+        let recognition = null;
+
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                document.getElementById('speechRecognizedText').innerHTML = "⚠️ 您的瀏覽器不支援語音辨識，請使用 Chrome/Edge 瀏覽器或用下方打字模式解謎！";
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'zh-TW';
+
+            recognition.onstart = function() {
+                isListening = true;
+                updateMicUI(true);
+                document.getElementById('speechRecognizedText').innerText = "🎙️ 正在傾聽中... 請唸出成語！";
+            };
+
+            recognition.onresult = function(event) {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    transcript += event.results[i][0].transcript;
+                }
+                
+                // Clean input transcript
+                transcript = transcript.replace(/[^\u4e00-\u9fa5]/g, '');
+                
+                if (transcript.length > 0) {
+                    document.getElementById('speechRecognizedText').innerText = `聽到的語音：「${transcript}」`;
+                    checkSpeechAnswer(transcript);
+                }
+            };
+
+            recognition.onerror = function(event) {
+                console.warn('Speech Recognition Error:', event.error);
+                if (event.error === 'not-allowed') {
+                    document.getElementById('speechRecognizedText').innerText = "❌ 麥克風權限被拒絕，請開啟麥克風權限！";
+                } else if (event.error === 'no-speech') {
+                    document.getElementById('speechRecognizedText').innerText = "❓ 沒有聽清聲音，請再唸一次喔！";
+                }
+                stopSpeechRecognition();
+            };
+
+            recognition.onend = function() {
+                if (isListening && !isSolved) {
+                    // Auto restart listening if user didn't stop manually
+                    try { recognition.start(); } catch(e){}
+                } else {
+                    stopSpeechRecognition();
+                }
+            };
+        }
+
+        function toggleSpeechRecognition() {
+            if (isSolved) {
+                playTTS("這題已經解開囉，請點擊下一題挑戰！");
+                return;
+            }
+
+            if (!recognition) {
+                initSpeechRecognition();
+                if (!recognition) return;
+            }
+
+            if (isListening) {
+                stopSpeechRecognition();
+            } else {
+                try {
+                    recognition.start();
+                } catch(e) {
+                    console.error("Mic start failed", e);
+                }
+            }
+        }
+
+        function stopSpeechRecognition() {
+            isListening = false;
+            updateMicUI(false);
+            if (recognition) {
+                try { recognition.stop(); } catch(e){}
+            }
+        }
+
+        function updateMicUI(listening) {
+            const micBtn = document.getElementById('micBtn');
+            const micIcon = document.getElementById('micIcon');
+            const micSubText = document.getElementById('micSubText');
+            const micWave = document.getElementById('micWave');
+
+            if (listening) {
+                micBtn.classList.remove('from-orange-500', 'to-amber-400');
+                micBtn.classList.add('from-red-500', 'to-rose-600', 'scale-105');
+                micIcon.className = "fa-solid fa-microphone-lines animate-pulse";
+                micSubText.innerText = "聆聽中...";
+                micWave.classList.remove('hidden');
+            } else {
+                micBtn.classList.remove('from-red-500', 'to-rose-600', 'scale-105');
+                micBtn.classList.add('from-orange-500', 'to-amber-400');
+                micIcon.className = "fa-solid fa-microphone";
+                micSubText.innerText = "按住說話";
+                micWave.classList.add('hidden');
+            }
+        }
+
+        function checkSpeechAnswer(spokenText) {
+            if (isSolved) return;
+
+            const currentObj = currentPool[currentIndex];
+            const targetIdiom = currentObj.idiom;
+            const missingChar = targetIdiom[currentObj.missingIndex];
+
+            // Match condition 1: Spoken text contains the complete 4-character idiom
+            // Match condition 2: Spoken text contains the missing target character + neighboring key context
+            if (spokenText.includes(targetIdiom) || spokenText.includes(missingChar)) {
+                // Confirm correct answer trigger
+                triggerSuccessSequence();
+            }
+        }
+
+        function triggerSuccessSequence() {
+            isSolved = true;
+            stopSpeechRecognition();
+
+            // Play celebratory sound synthesized with Web Audio API
+            playSuccessSound();
+
+            // Reveal Missing Character Animation
+            const currentObj = currentPool[currentIndex];
+            const missingTile = document.getElementById(`tile-${currentObj.missingIndex}`);
+            if (missingTile) {
+                missingTile.className = "w-16 h-20 sm:w-20 sm:h-24 rounded-2xl flex flex-col items-center justify-center border-4 shadow-xl tile-revealed";
+                missingTile.innerHTML = `
+                    <ruby class="select-none">
+                        <span class="char-box text-white font-black">${currentObj.idiom[currentObj.missingIndex]}</span>
+                        <rt class="text-amber-100 font-bold">${currentObj.zhuyin.split(' ')[currentObj.missingIndex]}</rt>
+                    </ruby>
+                `;
+            }
+
+            // Update UI & Score
+            score += 100;
+            document.getElementById('scoreDisplay').innerText = score;
+            document.getElementById('speechRecognizedText').innerHTML = `🎉 <span class="text-emerald-700">答對了！太棒了！過關！</span>`;
+
+            // Trigger Confetti Celebration
+            confetti({
+                particleCount: 80,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+
+            // Reveal Dictionary Knowledge Card
+            showDictionaryCard();
+
+            // Read the full idiom aloud with TTS
+            playTTS(`答對了！恭喜過關。${currentObj.idiom}。${currentObj.meaning}`);
+        }
+
+        function renderQuestion() {
+            isSolved = false;
+            stopSpeechRecognition();
+
+            const currentObj = currentPool[currentIndex];
+
+            // Update Level Counter
+            document.getElementById('levelDisplay').innerText = `${currentIndex + 1} / ${currentPool.length}`;
+            document.getElementById('idiomCategoryBadge').innerHTML = `<i class="fa-solid fa-bookmark"></i> ${currentObj.categoryName}`;
+            document.getElementById('idiomHint').innerText = currentObj.hint;
+            document.getElementById('speechRecognizedText').innerText = "準備好了嗎？點擊麥克風開始朗讀";
+
+            // Hide Dictionary Card
+            document.getElementById('dictionaryCard').classList.add('hidden');
+
+            // Render Character Tiles
+            const idiomDisplay = document.getElementById('idiomDisplay');
+            idiomDisplay.innerHTML = "";
+
+            const zhuyinArray = currentObj.zhuyin.split(' ');
+
+            for (let i = 0; i < currentObj.idiom.length; i++) {
+                const char = currentObj.idiom[i];
+                const py = zhuyinArray[i] || "";
+
+                const tile = document.createElement('div');
+
+                if (i === currentObj.missingIndex) {
+                    // Missing Character Tile
+                    tile.id = `tile-${i}`;
+                    tile.className = "w-16 h-20 sm:w-20 sm:h-24 rounded-2xl flex flex-col items-center justify-center border-4 border-amber-400 missing-tile shadow-lg cursor-pointer transform transition hover:scale-105";
+                    tile.innerHTML = `
+                        <div class="flex flex-col items-center justify-center">
+                            <span class="text-2xl sm:text-3xl font-extrabold text-amber-500 animate-pulse">❓</span>
+                            <span class="text-[10px] text-amber-700 font-bold mt-1">缺少字</span>
+                        </div>
+                    `;
+                } else {
+                    // Regular Normal Character Tile
+                    tile.className = "w-16 h-20 sm:w-20 sm:h-24 rounded-2xl bg-white flex flex-col items-center justify-center border-4 border-amber-200 shadow-md";
+                    tile.innerHTML = `
+                        <ruby class="select-none">
+                            <span class="char-box">${char}</span>
+                            <rt>${py}</rt>
+                        </ruby>
+                    `;
+                }
+                idiomDisplay.appendChild(tile);
+            }
+        }
+
+        function showDictionaryCard() {
+            const currentObj = currentPool[currentIndex];
+            document.getElementById('dictTitle').innerText = currentObj.idiom;
+            document.getElementById('dictZhuyin').innerText = currentObj.zhuyin;
+            document.getElementById('dictMeaning').innerText = currentObj.meaning;
+            document.getElementById('dictExample').innerText = `「${currentObj.example}」`;
+
+            const card = document.getElementById('dictionaryCard');
+            card.classList.remove('hidden');
+            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function nextQuestion() {
+            if (currentIndex < currentPool.length - 1) {
+                currentIndex++;
+                renderQuestion();
+            } else {
+                // Finished all questions in current pool
+                playTTS("太厲害了！你已經完成本區的所有成語挑戰！");
+                alert("🏆 恭喜您完成了所有成語大冒險關卡！真棒！");
+                currentIndex = 0;
+                renderQuestion();
+            }
+        }
+
+        function selectCategory(cat) {
+            // Update Active Button Styles
+            const btns = document.querySelectorAll('.cat-btn');
+            btns.forEach(b => {
+                b.classList.remove('active', 'bg-orange-500', 'text-white');
+                b.classList.add('bg-amber-100', 'text-amber-900');
+            });
+            event.target.classList.add('active', 'bg-orange-500', 'text-white');
+
+            // Filter Idiom Database
+            if (cat === 'all') {
+                currentPool = [...IDIOM_DATABASE];
+            } else {
+                currentPool = IDIOM_DATABASE.filter(item => item.category === cat);
+            }
+
+            currentIndex = 0;
+            renderQuestion();
+        }
+
+        function playDemoSpeech() {
+            const currentObj = currentPool[currentIndex];
+            playTTS(`成語示範朗讀：${currentObj.idiom}。`);
+        }
+
+        function playTTS(text) {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel(); // Stop pre-existing voices
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-TW';
+            utterance.rate = 0.85; // Tailored friendly slower pace for children
+            utterance.pitch = 1.1; // Friendly warm tone
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function playSuccessSound() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = 'triangle';
+                // Success Arpeggio Notes: C5 -> E5 -> G5 -> C6
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.1);
+                osc.frequency.setValueAtTime(783.99, now + 0.2);
+                osc.frequency.setValueAtTime(1046.50, now + 0.3);
+
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.6);
+            } catch(e) {}
+        }
+
+        function toggleManualInput() {
+            const box = document.getElementById('manualInputBox');
+            box.classList.toggle('hidden');
+        }
+
+        function checkManualAnswer() {
+            const input = document.getElementById('manualTextInput').value.trim();
+            if (!input) return;
+
+            checkSpeechAnswer(input);
+            document.getElementById('manualTextInput').value = "";
+        }
+
+        window.onload = function() {
+            initSpeechRecognition();
+            renderQuestion();
+        };
+    </script>
+</body>
+</html>
